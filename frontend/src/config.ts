@@ -19,9 +19,20 @@ export const SuperTokensReactConfig = {
   recipeList: [
     ThirdPartyEmailPasswordReact.init({
       signInAndUpFeature: {
-        providers: [Github.init(), Google.init(), Apple.init()],
+        providers: [
+          Google.init(),
+          {
+            id: 'custom',
+            name: 'Outlook', // Will display "Continue with X"
+          },
+        ],
       },
     }),
+    // ThirdParty.init({
+    //   signInAndUpFeature: {
+    //     providers: [c],
+    //   },
+    // }),
 
     //   signInAndUpFeature: {
     //     providers: [

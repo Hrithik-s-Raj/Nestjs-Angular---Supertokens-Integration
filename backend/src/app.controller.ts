@@ -8,7 +8,8 @@ import { Session } from './auth/session.decorator';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get()
+  @Get('/hello')
+  @UseGuards(new AuthGuard())
   getHello(): string {
     return this.appService.getHello();
   }

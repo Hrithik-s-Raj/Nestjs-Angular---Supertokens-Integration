@@ -6,6 +6,7 @@ import ThirdPartyEmailPassword from 'supertokens-node/recipe/thirdpartyemailpass
 import Session from 'supertokens-node/recipe/session';
 import Dashboard from 'supertokens-node/recipe/dashboard';
 import { MongoClient } from 'mongodb';
+import ThirdParty from 'supertokens-node/recipe/thirdparty';
 
 @Injectable()
 export class SupertokensService {
@@ -13,7 +14,7 @@ export class SupertokensService {
   private client: MongoClient;
   private db;
   public collection: any;
-  public Token: any;
+  public token: any;
   constructor(@Inject(ConfigInjectionToken) private config: AuthModuleConfig) {
     this.client = new MongoClient(this.url, {});
     this.client.connect();
@@ -26,28 +27,6 @@ export class SupertokensService {
         apiKey: config.apiKey,
       },
       recipeList: [
-        // providers: [
-        //   // We have provided you with development keys which you can use for testing.
-        //   // IMPORTANT: Please replace them with your own OAuth keys for production use.
-        //   ThirdPartyEmailPassword.Google({
-        //     clientId:
-        //       '1060725074195-kmeum4crr01uirfl2op9kd5acmi9jutn.apps.googleusercontent.com',
-        //     clientSecret: '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',
-        //   }),
-        //   ThirdPartyEmailPassword.Github({
-        //     clientSecret: 'e97051221f4b6426e8fe8d51486396703012f5bd',
-        //     clientId: '467101b197249757c71f',
-        //   }),
-        //   ThirdPartyEmailPassword.Apple({
-        //     clientId: '4398792-io.supertokens.example.service',
-        //     clientSecret: {
-        //       keyId: '7M48Y4RYDL',
-        //       privateKey:
-        //         '-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgu8gXs+XYkqXD6Ala9Sf/iJXzhbwcoG5dMh1OonpdJUmgCgYIKoZIzj0DAQehRANCAASfrvlFbFCYqn3I2zeknYXLwtH30JuOKestDbSfZYxZNMqhF/OzdZFTV0zc5u5s3eN+oCWbnvl0hM+9IW0UlkdA\n-----END PRIVATE KEY-----',
-        //       teamId: 'YWQCXGJRJL',
-        //     },
-        //   }),
-        // ],
         ThirdPartyEmailPassword.init({
           providers: [
             // We have provided you with development keys which you can use for testing.
@@ -58,6 +37,75 @@ export class SupertokensService {
               clientSecret: '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',
               scope: ['profile'],
             }),
+
+            {
+              id: 'custom',
+              get: (redirectURI, authCodeFromRequest) => {
+                return {
+                  accessTokenAPI: {
+                    // this contains info about the token endpoint which exchanges the auth code with the access token and profile info.
+                    url: 'https://app.ktern.com/auth/login',
+                    params: {
+                      // example post params
+                      client_id: 'fa12dd4a-c1bb-47c9-b0bd-0386b318f026',
+                      client_secret: '<CLIENT SECRET>',
+                      grant_type: 'authorization_code',
+                      redirect_uri: 'https://app.ktern.com/auth/login',
+                      code: authCodeFromRequest || '',
+
+                      //...
+                    },
+                  },
+                  authorisationRedirect: {
+                    // this contains info about forming the authorisation redirect URL without the state params and without the redirect_uri param
+                    url: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize',
+                    params: {
+                      client_id: 'fa12dd4a-c1bb-47c9-b0bd-0386b318f026',
+                      scope: 'user.read',
+                      response_type: 'id_token',
+                      redirectURI: 'https://app.ktern.com/auth/login',
+                      //...
+                    },
+                  },
+                  getClientId: () => {
+                    return 'fa12dd4a-c1bb-47c9-b0bd-0386b318f026';
+                  },
+                  getProfileInfo: async (accessTokenAPIResponse) => {
+                    console.log(
+                      'ascjknajbscjasbc;bas;cnask;cn;klascn;kask;cna;sk',
+                      accessTokenAPIResponse,
+                    );
+                    /* accessTokenAPIResponse is the JSON response from the accessTokenAPI POST call. Using this, you need to return an object of the following type:
+                                {
+                                    id: string, // user ID as provided by the third party provider
+                                    email?: { // optional 
+                                        id: string, // emailID
+                                        isVerified: boolean // true if the email is verified already
+                                    }
+                                }
+                                */
+                    return {
+                      id: '...',
+                    };
+                  },
+                };
+              },
+            },
+
+            // ThirdPartyEmailPassword.Github({
+            //   clientSecret: 'e97051221f4b6426e8fe8d51486396703012f5bd',
+            //   clientId: '467101b197249757c71f',
+            // }),
+
+            // ThirdPartyEmailPassword.Apple({
+            //   clientId: '4398792-io.supertokens.example.service',
+            //   clientSecret: {
+            //     keyId: '7M48Y4RYDL',
+            //     privateKey:
+            //       '-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkwdwIBAQQgu8gXs+XYkqXD6Ala9Sf/iJXzhbwcoG5dMh1OonpdJUmgCgYIKoZIzj0DAQehRANCAASfrvlFbFCYqn3I2zeknYXLwtH30JuOKestDbSfZYxZNMqhF/OzdZFTV0zc5u5s3eN+oCWbnvl0hM+9IW0UlkdA\n-----END PRIVATE KEY-----',
+            //     teamId: 'YWQCXGJRJL',
+            //   },
+            // }),
           ],
           override: {
             apis: (originalImplementation) => {
@@ -65,35 +113,41 @@ export class SupertokensService {
                 ...originalImplementation,
 
                 // we override the thirdparty sign in / up API
-                thirdPartySignInUpPOST: async function (input) {
+                thirdPartySignInUpPOST: async function (input: any) {
                   if (
                     originalImplementation.thirdPartySignInUpPOST === undefined
-                  ) {
+                  )
                     throw Error('Should never come here');
-                  }
+
                   const response =
                     await originalImplementation.thirdPartySignInUpPOST(input);
                   if (response.status === 'OK') {
+                    console.log('as;lmaslcmlasmclasml', response);
                     const accessToken = response.authCodeResponse.id_token;
-                    this.Token = JSON.parse(atob(accessToken.split('.')[1]));
+                    this.token = JSON.parse(atob(accessToken.split('.')[1]));
+
                     const createUserData = {
-                      ...this.Token,
+                      ...this.token,
                       Loggedon: new Date(),
+                      superTokenId: response.user.id,
                     };
+
                     this.client = new MongoClient(
                       'mongodb+srv://ktern:ktern@cluster0.iik3p.mongodb.net',
                     );
                     await this.client.connect();
+
                     this.collection = this.client
                       .db('test')
                       .collection('users-2');
                     const signedIn = await this.collection.findOne({
-                      email: this.Token.email,
+                      email: this.token.email,
                     });
+
                     if (signedIn) {
                       console.log('If Works');
                       await this.collection.updateOne(
-                        { email: this.Token.email },
+                        { email: this.token.email },
                         { $set: { ['Loggedon']: new Date() } },
                       );
                     } else {
@@ -168,5 +222,9 @@ export class SupertokensService {
         }),
       ],
     });
+  }
+
+  async Override() {
+    return 'a';
   }
 }
